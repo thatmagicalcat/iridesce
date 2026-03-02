@@ -4,12 +4,14 @@ use crate::drawable::Drawable;
 use crate::geometry::{IntoRaylibVector, LineSegment};
 use crate::intersection::Intersection;
 use crate::light::LightSource;
+use crate::optical_objects::{OpticalObjectEnum, PlaneMirror, OpticalObject};
 use crate::ray::Ray;
-use crate::surface::SurfaceShape;
+use crate::surface::Surface;
 use crate::utils::{self, ColorIntensity};
 
 pub struct World {
-    surfaces: Vec<SurfaceShape>,
+    objects: Vec<OpticalObjectEnum>,
+    // surfaces: Vec<Surface>,
     lights: Vec<LightSource>,
 
     /// Line segments representing the paths of rays for rendering
@@ -22,15 +24,18 @@ pub struct World {
 impl World {
     pub fn new() -> Self {
         Self {
-            surfaces: Vec::new(),
-            lights: Vec::new(),
-            ray_paths: Vec::new(),
+            objects: vec![],
+            lights: vec![],
+            ray_paths: vec![],
             updated: true,
         }
     }
 
-    pub fn add_surface(&mut self, surface: SurfaceShape) {
-        self.surfaces.push(surface);
+    pub fn add_object<T>(&mut self, object: T)
+    where
+        T: Into<OpticalObjectEnum>,
+    {
+        self.objects.push(object.into());
         self.updated = true;
     }
 
@@ -55,13 +60,19 @@ impl World {
 
         'outer: for _ in 0..depth {
             for ray in active_rays.iter() {
-                let Some(closest_intersection) = self.closest_intersection(ray) else {
-                    // somewhere outside the screen
-                    // FIXME: Calculate this based on camera's position in future
-                    let far_point = ray.origin + ray.direction * 1000.0;
+                let Some(closest_intersection) = self
+                    .objects
+                    .iter()
+                    .filter_map(|object| object.intersect(ray))
+                    .min_by(|a, b| {
+                        a.sq_distance
+                            .partial_cmp(&b.sq_distance)
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    })
+                else {
                     self.ray_paths.push(LineSegment {
                         start: ray.origin,
-                        end: far_point,
+                        end: ray.origin + ray.direction * 1000.0, // arbitrary long distance
                         wavelength: ray.wavelength,
                         intensity: ray.intensity,
                     });
@@ -69,12 +80,13 @@ impl World {
                     continue;
                 };
 
-                self.ray_paths.push(LineSegment::from_ray_intersection(ray, &closest_intersection));
+                self.ray_paths.push(LineSegment::from_ray_intersection(
+                    ray,
+                    &closest_intersection,
+                ));
 
-                let intensity = ray.intensity * closest_intersection.reflectivity;
-
-                // No need to trace further if the intensity is too low
-                if intensity < 0.01 {
+                let intensity = ray.intensity * closest_intersection.material.reflectivity;
+                if ray.intensity < 0.01 {
                     continue;
                 }
 
@@ -105,18 +117,6 @@ impl World {
 
         self.updated = false;
     }
-
-    /// Find the closest intersection of a ray with the surfaces in the world
-    pub fn closest_intersection(&self, ray: &Ray) -> Option<Intersection> {
-        self.surfaces
-            .iter()
-            .filter_map(|surface| surface.intersect(ray))
-            .min_by(|a, b| {
-                a.sq_distance
-                    .partial_cmp(&b.sq_distance)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            })
-    }
 }
 
 impl Drawable for World {
@@ -127,8 +127,8 @@ impl Drawable for World {
             d.draw_line_ex(ray_path[0].into_rvec(), ray_path[1].into_rvec(), 1.0, color);
         }
 
-        for surface in self.surfaces.iter() {
-            surface.draw(d);
+        for obj in self.objects.iter() {
+            obj.draw(d);
         }
 
         self.lights.iter().for_each(|light| light.draw(d));
