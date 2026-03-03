@@ -1,13 +1,13 @@
 use crate::{intersection::Intersection, ray::Ray};
 use enum_dispatch::enum_dispatch;
 use glam::Vec2;
-use raylib::prelude::Vector2;
 
 #[enum_dispatch]
 pub trait Geometry {
     fn intersect(&self, world_ray: &Ray) -> Option<Intersection>;
     fn contains_point(&self, point: Vec2) -> bool;
     fn set_position(&mut self, position: Vec2);
+    fn get_position(&self) -> Vec2;
 }
 
 pub fn line_ray_intersection(ray: &Ray, v1: Vec2, v2: Vec2) -> Option<Vec2> {
@@ -30,16 +30,6 @@ pub trait CrossProduct2D {
 impl CrossProduct2D for Vec2 {
     fn cross(self, other: Vec2) -> f32 {
         self.x * other.y - self.y * other.x
-    }
-}
-
-pub trait IntoRaylibVector {
-    fn into_rvec(self) -> Vector2;
-}
-
-impl IntoRaylibVector for Vec2 {
-    fn into_rvec(self) -> Vector2 {
-        Vector2::new(self.x, self.y)
     }
 }
 

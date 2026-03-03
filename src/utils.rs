@@ -1,4 +1,4 @@
-use raylib::color::Color;
+use macroquad::color::Color;
 
 const GAMMA: f64 = 0.80;
 const INTENSITY_MAX: f64 = 255.0;
@@ -23,15 +23,16 @@ pub fn wavelength_to_rgb(wavelength: f64) -> Color {
         _ => 0.0,
     };
 
-    let adjust = |color: f64| -> u8 {
-        if color == 0.0 {
+    let adjust = |color: f64| -> f32 {
+        (if color == 0.0 {
             0
         } else {
-            (INTENSITY_MAX * (color * factor).powf(GAMMA)).round() as _
-        }
+            (INTENSITY_MAX * (color * factor).powf(GAMMA)).round() as u8
+        }) as f32
+            / 255.0
     };
 
-    Color::new(adjust(red), adjust(green), adjust(blue), 100)
+    Color::new(adjust(red), adjust(green), adjust(blue), 0.4)
 }
 
 pub trait ColorIntensity {
@@ -45,7 +46,6 @@ impl ColorIntensity for Color {
             ((self.r as f64) * factor) as _,
             ((self.g as f64) * factor) as _,
             ((self.b as f64) * factor) as _,
-
             self.a,
         )
     }

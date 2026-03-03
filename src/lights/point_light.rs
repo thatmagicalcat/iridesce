@@ -1,5 +1,5 @@
+use egui_macroquad::egui;
 use glam::Vec2;
-use raylib::{color::Color, drawing::RaylibDraw};
 
 use super::LightSource;
 use crate::{
@@ -12,11 +12,12 @@ const RADIUS: f32 = 5.0;
 /// I can't literally make it a point because then it would be so hard to click it with
 /// the mouse and move around
 pub struct PointLight {
-    pub position: glam::Vec2,
-    pub wavelength: f32,
-    pub ray_count: usize,
+    position: glam::Vec2,
+    wavelength: f32,
+    ray_count: usize,
+    bounds: AABB,
 
-    pub bounds: AABB,
+    is_dirty: bool,
 }
 
 impl PointLight {
@@ -26,13 +27,12 @@ impl PointLight {
             position + Vec2::splat(RADIUS),
         );
 
-        dbg!(&bounds);
-
         Self {
             position,
             wavelength,
             ray_count,
             bounds,
+            is_dirty: true,
         }
     }
 }
@@ -51,16 +51,48 @@ impl LightSource for PointLight {
             })
             .collect()
     }
+
+    fn check_and_clear_dirty(&mut self) -> bool {
+        let was_dirty = self.is_dirty;
+        self.is_dirty = false;
+        was_dirty
+    }
+
+    fn draw_ui(&mut self, ui: &mut egui_macroquad::egui::Ui){
+        self.is_dirty |= egui::Grid::new("point_light_properties")
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("Position");
+                ui.label(format!("({:.1}, {:.1})", self.position.x, self.position.y));
+                ui.end_row();
+
+                ui.label("Wavelength");
+                let wavelength_changed = ui
+                    .add(egui::DragValue::new(&mut self.wavelength).clamp_range(380.0..=750.0))
+                    .changed();
+                ui.end_row();
+
+                ui.label("Ray Count");
+                let ray_count_changed = ui
+                    .add(egui::DragValue::new(&mut self.ray_count).clamp_range(1..=1000))
+                    .changed();
+                ui.end_row();
+
+                wavelength_changed || ray_count_changed
+            })
+            .inner;
+    }
 }
 
 impl Drawable for PointLight {
-    fn draw(&self, d: &mut raylib::drawing::RaylibDrawHandle) {
-        d.draw_circle(
-            self.position.x as i32,
-            self.position.y as i32,
+    fn draw(&self) {
+        macroquad::shapes::draw_circle(
+            self.position.x,
+            self.position.y,
             RADIUS,
-            Color::YELLOW,
-        )
+            macroquad::color::YELLOW,
+        );
     }
 }
 
@@ -83,5 +115,9 @@ impl Geometry for PointLight {
 
         self.position = position;
         self.bounds = AABB::new(position - r, position + r);
+    }
+
+    fn get_position(&self) -> Vec2 {
+        self.position
     }
 }

@@ -25,4 +25,9 @@ impl AABB {
 
         true
     }
+
+    pub fn expand(&mut self, amount: f32) {
+        self.v1 -= Vec2::splat(amount);
+        self.v2 += Vec2::splat(amount);
+    }
 }

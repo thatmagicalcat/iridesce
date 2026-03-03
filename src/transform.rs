@@ -1,4 +1,4 @@
-use glam::{Affine2, Mat2, Vec2};
+use glam::{Affine2, Vec2};
 
 pub struct Transform {
     pub position: Vec2,
@@ -21,5 +21,20 @@ impl Transform {
             rotation: 0.0,
             scale: Vec2::ONE,
         }
+    }
+
+    pub fn with_position(mut self, position: Vec2) -> Self {
+        self.position = position;
+        self
+    }
+
+    pub fn with_rotation(mut self, rotation: f32) -> Self {
+        self.rotation = rotation;
+        self
+    }
+
+    pub fn with_scale(mut self, scale: Vec2) -> Self {
+        self.scale = scale;
+        self
     }
 }

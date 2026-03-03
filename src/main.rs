@@ -1,5 +1,5 @@
-use glam::Vec2;
-use raylib::prelude::*;
+use ::glam::vec2;
+use macroquad::prelude::*;
 
 mod aabb;
 mod drawable;
@@ -13,8 +13,6 @@ mod transform;
 mod utils;
 mod world;
 
-use drawable::Drawable;
-use surface::Surface;
 use world::World;
 
 use crate::{
@@ -22,45 +20,65 @@ use crate::{
     optical_objects::{Material, PlaneMirror},
 };
 
-const DEPTH: u32 = 2;
+const DEPTH: u32 = 5;
 
-fn main() {
-    let (mut rl, thread) = raylib::init()
-        .size(800, 800)
-        // .msaa_4x()
-        .log_level(TraceLogLevel::LOG_WARNING)
-        .build();
+fn window_conf() -> Conf {
+    Conf {
+        window_title: "Reflections".to_string(),
+        window_width: 800,
+        window_height: 800,
+        window_resizable: false,
+        high_dpi: true,
+        ..Default::default()
+    }
+}
 
-    rl.set_target_fps(24);
-
+#[macroquad::main(window_conf)]
+async fn main() {
     let mut world = World::new();
 
     world.add_object(PlaneMirror::new(
-        Surface::plane(Vec2::new(100.0, 100.0), Vec2::new(700.0, 100.0)),
-        transform::Transform::identity(),
+        400.0,
+        transform::Transform::identity()
+            .with_rotation(140.0_f32.to_radians())
+            .with_position(vec2(400.0, 200.0)),
         Material {
-            reflectivity: 1.0,
+            reflectivity: 0.9,
             refractive_index: 1.0,
         },
         false,
     ));
 
-    // Add a point light source
-    // world.add_light(LightSource::Point {
-    //     origin: Vec2::new(200.0, 150.0),
-    //     ray_count: 360,
-    //     wavelength: 500.0,
-    // });
+    world.add_object(PlaneMirror::new(
+        100.0,
+        transform::Transform::identity()
+            .with_rotation(90.0_f32.to_radians())
+            .with_position(vec2(500.0, 500.0)),
+        Material {
+            reflectivity: 0.9,
+            refractive_index: 1.0,
+        },
+        false,
+    ));
 
-    world.add_light(PointLight::new(Vec2::new(400.0, 400.0), 700.0, 200));
+    world.add_light(PointLight::new(vec2(400.0, 400.0), 700.0, 200));
 
-    while !rl.window_should_close() {
-        world.handle_event(&rl);
+    loop {
+        egui_macroquad::cfg(|ctx| {
+            if !ctx.wants_pointer_input() {
+                if is_mouse_button_pressed(MouseButton::Left) {
+                    world.mouse_pressed(mouse_position().into());
+                }
 
-        let mut d = rl.begin_drawing(&thread);
+                if is_mouse_button_down(MouseButton::Left) {
+                    world.mouse_movement(mouse_position().into());
+                }
+            }
+        });
 
-        d.clear_background(Color::BLACK);
-        world.calculate_ray_paths(DEPTH);
-        world.draw(&mut d);
+        world.update(DEPTH);
+        world.draw();
+
+        next_frame().await;
     }
 }
