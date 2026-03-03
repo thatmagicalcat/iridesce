@@ -1,51 +1,32 @@
 {
-  description = "Rust dev environment for Raylib";
+  description = "Macroquad development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils, ... }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = nixpkgs.legacyPackages.${system};
+        
+        buildDeps = with pkgs; [
+          pkg-config
+          alsa-lib
+          libX11
+          libXi
+          libXcursor
+          libXrandr
+          libxkbcommon
+          libGL
+        ];
       in
       {
         devShells.default = pkgs.mkShell {
-          # Tools needed at build time
-          nativeBuildInputs = with pkgs; [
-            pkg-config
-            cmake
-            clang
-            libclang
-          ];
-
-          # Libraries that the code links against
-          buildInputs = with pkgs; [
-            libX11
-            libXcursor
-            libXrandr
-            libXi
-            libXinerama
-            libGL
-            wayland
-            glfw
-            libxkbcommon
-          ];
-
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (with pkgs; [
-            libX11
-            libXcursor
-            libXrandr
-            libXi
-            libXinerama
-            libGL
-            wayland
-            glfw
-            libxkbcommon
-            libclang
-          ]);
+          nativeBuildInputs = with pkgs; [ ];
+          buildInputs = buildDeps;
+          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath buildDeps;
         };
       }
     );
