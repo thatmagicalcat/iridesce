@@ -36,6 +36,21 @@ impl Surface {
         Self::Circle { center, radius }
     }
 
+    pub fn set_position(&mut self, position: Vec2) {
+        match *self {
+            Self::Plane { ref mut start, ref mut end, .. } => {
+                let center = (*start + *end) * 0.5;
+                let offset = position - center;
+                *start += offset;
+                *end += offset;
+            }
+
+            Self::Circle { ref mut center, .. } => {
+                *center = position;
+            }
+        }
+    }
+
     pub fn intersect(&self, ray: &Ray, material: &Material) -> Option<Intersection> {
         match *self {
             Self::Plane { start, end, normal } => {

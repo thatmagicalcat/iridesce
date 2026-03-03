@@ -1,24 +1,40 @@
+use glam::vec2;
 use raylib::prelude::*;
 
 use crate::drawable::Drawable;
-use crate::geometry::{IntoRaylibVector, LineSegment};
+use crate::geometry::{Geometry, IntoRaylibVector, LineSegment};
 use crate::intersection::Intersection;
-use crate::light::LightSource;
-use crate::optical_objects::{OpticalObjectEnum, PlaneMirror, OpticalObject};
+use crate::lights::{LightSource, LightSourceEnum, PointLight};
+use crate::optical_objects::{OpticalObject, OpticalObjectEnum, PlaneMirror};
 use crate::ray::Ray;
 use crate::surface::Surface;
 use crate::utils::{self, ColorIntensity};
 
+#[derive(Debug)]
+pub enum SelectState {
+    None,
+    Object(usize),
+    Light(usize),
+}
+
+impl SelectState {
+    fn is_none(&self) -> bool {
+        matches!(self, SelectState::None)
+    }
+}
+
 pub struct World {
     objects: Vec<OpticalObjectEnum>,
+    lights: Vec<LightSourceEnum>,
     // surfaces: Vec<Surface>,
-    lights: Vec<LightSource>,
-
     /// Line segments representing the paths of rays for rendering
     ray_paths: Vec<LineSegment>,
 
     /// Whether the ray paths need to be recalculated
     updated: bool,
+
+    /// TODO: use selected state to show some UI for editing the object/light properties
+    select_state: SelectState,
 }
 
 impl World {
@@ -28,19 +44,17 @@ impl World {
             lights: vec![],
             ray_paths: vec![],
             updated: true,
+            select_state: SelectState::None,
         }
     }
 
-    pub fn add_object<T>(&mut self, object: T)
-    where
-        T: Into<OpticalObjectEnum>,
-    {
+    pub fn add_object(&mut self, object: impl Into<OpticalObjectEnum>) {
         self.objects.push(object.into());
         self.updated = true;
     }
 
-    pub fn add_light(&mut self, light: LightSource) {
-        self.lights.push(light);
+    pub fn add_light(&mut self, light: impl Into<LightSourceEnum>) {
+        self.lights.push(light.into());
         self.updated = true;
     }
 
@@ -116,6 +130,55 @@ impl World {
         }
 
         self.updated = false;
+    }
+
+    pub fn handle_event(&mut self, rl: &RaylibHandle) {
+        let Vector2 { x, y } = rl.get_mouse_position();
+        let mouse_pos = vec2(x, y);
+
+        if rl.is_mouse_button_released(MouseButton::MOUSE_BUTTON_LEFT) {
+            self.select_state = SelectState::None;
+        }
+
+        if rl.is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
+            dbg!(mouse_pos);
+            if let Some((index, _)) = self
+                .objects
+                .iter()
+                .enumerate()
+                .find(|(_, obj)| obj.contains_point(mouse_pos))
+            {
+                self.select_state = SelectState::Object(index);
+            } else if let Some((index, _)) = self
+                .lights
+                .iter()
+                .enumerate()
+                .find(|(_, light)| light.contains_point(mouse_pos))
+            {
+                self.select_state = SelectState::Light(index);
+            }
+        }
+
+        if rl.is_mouse_button_down(MouseButton::MOUSE_BUTTON_LEFT) {
+            match self.select_state {
+                SelectState::Object(index) => {
+                    self.objects[index].set_position(mouse_pos);
+                    self.request_redraw();
+                }
+
+                SelectState::Light(index) => {
+                    self.lights[index].set_position(mouse_pos);
+                    self.request_redraw();
+                }
+
+                SelectState::None => {}
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn request_redraw(&mut self) {
+        self.updated = true;
     }
 }
 

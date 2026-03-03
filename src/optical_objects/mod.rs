@@ -1,7 +1,8 @@
 use enum_dispatch::enum_dispatch;
+use glam::Vec2;
 use raylib::drawing::RaylibDrawHandle;
 
-use crate::{intersection::Intersection, ray::Ray, drawable::Drawable};
+use crate::{drawable::Drawable, geometry::Geometry, intersection::Intersection, ray::Ray};
 
 mod plane_mirror;
 
@@ -9,11 +10,10 @@ pub use plane_mirror::PlaneMirror;
 
 #[enum_dispatch]
 pub trait OpticalObject {
-    fn intersect(&self, world_ray: &Ray) -> Option<Intersection>;
     fn handle_intersection(&self, ray: &Ray, intersection: &Intersection) -> Vec<Ray>;
 }
 
-#[enum_dispatch(OpticalObject, Drawable)]
+#[enum_dispatch(OpticalObject, Drawable, Geometry)]
 pub enum OpticalObjectEnum {
     PlaneMirror,
 }

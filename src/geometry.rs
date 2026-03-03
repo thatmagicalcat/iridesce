@@ -1,6 +1,14 @@
 use crate::{intersection::Intersection, ray::Ray};
+use enum_dispatch::enum_dispatch;
 use glam::Vec2;
 use raylib::prelude::Vector2;
+
+#[enum_dispatch]
+pub trait Geometry {
+    fn intersect(&self, world_ray: &Ray) -> Option<Intersection>;
+    fn contains_point(&self, point: Vec2) -> bool;
+    fn set_position(&mut self, position: Vec2);
+}
 
 pub fn line_ray_intersection(ray: &Ray, v1: Vec2, v2: Vec2) -> Option<Vec2> {
     let r = v2 - v1;

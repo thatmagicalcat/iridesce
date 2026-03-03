@@ -4,7 +4,7 @@ use raylib::{
     drawing::{RaylibDraw, RaylibDrawHandle},
 };
 
-use crate::{geometry::IntoRaylibVector, surface::Surface, transform::Transform};
+use crate::{aabb::AABB, geometry::IntoRaylibVector, surface::Surface, transform::Transform};
 
 use super::*;
 
@@ -13,9 +13,42 @@ pub struct PlaneMirror {
     pub transform: Transform,
     pub material: Material,
     pub one_side: bool,
+    pub bounds: AABB,
+}
+
+impl PlaneMirror {
+    pub fn new(surface: Surface, transform: Transform, material: Material, one_side: bool) -> Self {
+        let bounds = match surface {
+            Surface::Plane { start, end, .. } => AABB::new(start.min(end), start.max(end)),
+            Surface::Circle { center, radius } => {
+                AABB::new(center - vec2(radius, radius), center + vec2(radius, radius))
+            }
+        };
+
+        Self {
+            surface,
+            transform,
+            material,
+            one_side,
+            bounds,
+        }
+    }
 }
 
 impl OpticalObject for PlaneMirror {
+    fn handle_intersection(&self, ray: &Ray, intersection: &Intersection) -> Vec<Ray> {
+        todo!()
+    }
+}
+
+// Maybe make everything in world space... as it can be a bit confusing to have
+// some things in world space and some things in local space.
+//
+// Maybe the geometry should be in world space, and the transform is just for drawing?
+// idk.. I'll think about this later.
+//
+// This is fine :)
+impl Geometry for PlaneMirror {
     fn intersect(&self, world_ray: &Ray) -> Option<Intersection> {
         // get the ray inside the local space
         let inverse_transform = self.transform.world_to_local();
@@ -42,8 +75,18 @@ impl OpticalObject for PlaneMirror {
         })
     }
 
-    fn handle_intersection(&self, ray: &Ray, intersection: &Intersection) -> Vec<Ray> {
-        todo!()
+    fn contains_point(&self, point: Vec2) -> bool {
+        self.bounds.contains(point)
+    }
+
+    fn set_position(&mut self, position: Vec2) {
+        let w = self.bounds.v2.x - self.bounds.v1.x;
+        let h = self.bounds.v2.y - self.bounds.v1.y;
+        let half_dim = vec2(w, h) * 0.5;
+
+        self.bounds = AABB::new(position - half_dim, position + half_dim);
+        self.transform.position = position;
+        self.surface.set_position(position);
     }
 }
 
