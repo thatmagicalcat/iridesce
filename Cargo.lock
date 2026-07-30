@@ -437,6 +437,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "iridesce"
+version = "0.1.0"
+dependencies = [
+ "egui-macroquad",
+ "enum_dispatch",
+ "glam 0.32.0",
+ "macroquad",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -811,16 +821,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
 dependencies = [
  "bitflags 2.11.0",
-]
-
-[[package]]
-name = "reflections"
-version = "0.1.0"
-dependencies = [
- "egui-macroquad",
- "enum_dispatch",
- "glam 0.32.0",
- "macroquad",
 ]
 
 [[package]]

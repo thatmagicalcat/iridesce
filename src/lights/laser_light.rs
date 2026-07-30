@@ -2,12 +2,13 @@ use egui_macroquad::egui;
 use glam::Vec2;
 
 use crate::lights::LightSource;
+use crate::transform::Transform;
 use crate::{
     aabb::AABB, drawable::Drawable, geometry::Geometry, intersection::Intersection, ray::Ray,
 };
 
 pub struct LaserLight {
-    origin: Vec2,
+    transform: Transform,
     direction: Vec2,
     wavelength: f32,
     bounds: AABB,
@@ -16,9 +17,13 @@ pub struct LaserLight {
 
 impl LaserLight {
     pub fn new(origin: Vec2, direction: Vec2, wavelength: f32) -> Self {
-        let bounds = AABB::new(origin - direction * 20.0, origin + direction * 20.0);
+        let mut bounds = AABB::new(-Vec2::splat(3.0), Vec2::splat(3.0));
+
+        // make it easier to click on the laser light with the mouse
+        bounds.expand(6.0);
+
         LaserLight {
-            origin,
+            transform: Transform::identity().with_position(origin),
             direction: direction.normalize(),
             wavelength,
             bounds,
@@ -30,8 +35,8 @@ impl LaserLight {
 impl LightSource for LaserLight {
     fn get_rays(&self) -> Vec<Ray> {
         vec![Ray {
-            origin: self.origin,
-            direction: self.direction,
+            origin: self.transform.position,
+            direction: self.transform.local_to_world().transform_vector2(self.direction),
             wavelength: self.wavelength,
             intensity: 1.0,
         }]
@@ -48,7 +53,10 @@ impl LightSource for LaserLight {
             .num_columns(2)
             .show(ui, |ui| {
                 ui.label("Position");
-                ui.label(format!("({}, {})", self.origin.x, self.origin.y));
+                ui.label(format!(
+                    "({}, {})",
+                    self.transform.position.x, self.transform.position.y
+                ));
                 ui.end_row();
 
                 ui.label("Wavelength");
@@ -57,7 +65,19 @@ impl LightSource for LaserLight {
                     .changed();
                 ui.end_row();
 
-                wavelength_changed
+                ui.label("Rotation");
+                let mut angle: f32 = self.transform.rotation.to_degrees();
+                let rotation_changed = ui
+                    .add(egui::DragValue::new(&mut angle).range(0.0..=360.0))
+                    .changed();
+
+                if rotation_changed {
+                    self.transform.rotation = angle.to_radians();
+                }
+
+                ui.end_row();
+
+                wavelength_changed || rotation_changed
             })
             .inner;
     }
@@ -65,14 +85,22 @@ impl LightSource for LaserLight {
 
 impl Drawable for LaserLight {
     fn draw(&self) {
-        let end = self.origin + self.direction * 20.0;
-        macroquad::shapes::draw_line(
-            self.origin.x,
-            self.origin.y,
-            end.x,
-            end.y,
-            2.0,
-            macroquad::color::YELLOW,
+        let Vec2 { x: x1, y: y1 } = self.bounds.v1;
+        let Vec2 { x: x2, y: y2 } = self.bounds.v2;
+
+        let w = x2 - x1;
+        let h = y2 - y1;
+
+        macroquad::shapes::draw_rectangle_ex(
+            self.transform.position.x,
+            self.transform.position.y,
+            w,
+            h,
+            macroquad::shapes::DrawRectangleParams {
+                offset: (0.5, 0.5).into(),
+                rotation: self.transform.rotation,
+                color: macroquad::color::RED,
+            },
         );
     }
 }
@@ -83,14 +111,15 @@ impl Geometry for LaserLight {
     }
 
     fn contains_point(&self, point: Vec2) -> bool {
-        self.bounds.contains(point)
+        let local_point = self.transform.world_to_local().transform_point2(point);
+        self.bounds.contains(local_point)
     }
 
     fn set_position(&mut self, position: Vec2) {
-        self.origin = position;
+        self.transform.position = position;
     }
 
     fn get_position(&self) -> Vec2 {
-        self.origin
+        self.transform.position
     }
 }

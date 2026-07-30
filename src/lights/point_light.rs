@@ -69,13 +69,13 @@ impl LightSource for PointLight {
 
                 ui.label("Wavelength");
                 let wavelength_changed = ui
-                    .add(egui::DragValue::new(&mut self.wavelength).clamp_range(380.0..=750.0))
+                    .add(egui::DragValue::new(&mut self.wavelength).range(380.0..=750.0))
                     .changed();
                 ui.end_row();
 
                 ui.label("Ray Count");
                 let ray_count_changed = ui
-                    .add(egui::DragValue::new(&mut self.ray_count).clamp_range(1..=1000))
+                    .add(egui::DragValue::new(&mut self.ray_count).range(1..=1000))
                     .changed();
                 ui.end_row();
 

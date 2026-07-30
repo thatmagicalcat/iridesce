@@ -4,8 +4,10 @@ use glam::Vec2;
 use crate::{drawable::Drawable, geometry::Geometry, intersection::Intersection, ray::Ray, transform::Transform};
 
 mod plane_mirror;
+mod convex_lens;
 
 pub use plane_mirror::PlaneMirror;
+pub use convex_lens::ConvexLens;
 
 #[enum_dispatch]
 pub trait OpticalObject {
@@ -17,6 +19,7 @@ pub trait OpticalObject {
 #[enum_dispatch(OpticalObject, Drawable, Geometry)]
 pub enum OpticalObjectEnum {
     PlaneMirror,
+    ConvexLens,
 }
 
 #[derive(Clone, Copy)]

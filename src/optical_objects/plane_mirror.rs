@@ -3,7 +3,7 @@ use glam::vec2;
 
 use crate::{
     aabb::AABB,
-    surface::{PlaneSurface, SurfaceEnum},
+    surface::{PlaneSurface, Surface},
     transform::Transform,
 };
 
@@ -13,24 +13,22 @@ pub struct PlaneMirror {
     surface: PlaneSurface,
     transform: Transform,
     material: Material,
-    one_side: bool,
     bounds: AABB,
     is_dirty: bool,
 }
 
 impl PlaneMirror {
-    pub fn new(length: f32, transform: Transform, material: Material, one_side: bool) -> Self {
+    pub fn new(length: f32, transform: Transform, material: Material) -> Self {
         let plane = PlaneSurface::new(vec2(-length * 0.5, 0.0), vec2(length * 0.5, 0.0));
         let mut bounds = AABB::new(plane.start.min(plane.end), plane.start.max(plane.end));
 
         // make it easier to click on the plane mirror with the mouse
-        bounds.expand(3.0);
+        bounds.expand(6.0);
 
         Self {
             surface: plane,
             transform,
             material,
-            one_side,
             bounds,
             is_dirty: true,
         }
@@ -74,9 +72,20 @@ impl OpticalObject for PlaneMirror {
                 ui.end_row();
 
                 ui.label("Rotation");
+
+                let mut angle = self.transform.rotation.to_degrees();
                 let rotation_changed = ui
-                    .add(egui::DragValue::new(&mut self.transform.rotation).speed(0.1))
+                    .add(
+                        egui::Slider::new(&mut angle, 0.0..=360.0)
+                            .step_by(0.5)
+                            .text("degrees"),
+                    )
                     .changed();
+
+                if rotation_changed {
+                    self.transform.rotation = angle.to_radians();
+                }
+
                 ui.end_row();
 
                 ui.label("Reflectivity");
@@ -89,7 +98,28 @@ impl OpticalObject for PlaneMirror {
                     .changed();
                 ui.end_row();
 
-                rotation_changed || reflectivity_changed
+                ui.label("Length");
+                let mut length = self.surface.end.x - self.surface.start.x;
+                let length_changed = ui
+                    .add(
+                        egui::DragValue::new(&mut length)
+                            .range(10.0..=1000.0)
+                            .speed(1.0),
+                    )
+                    .changed();
+
+                if length_changed {
+                    self.surface =
+                        PlaneSurface::new(vec2(-length * 0.5, 0.0), vec2(length * 0.5, 0.0));
+                    self.bounds = AABB::new(
+                        self.surface.start.min(self.surface.end),
+                        self.surface.start.max(self.surface.end),
+                    );
+
+                    self.bounds.expand(6.0);
+                }
+
+                rotation_changed || reflectivity_changed || length_changed
             })
             .inner;
     }
@@ -109,9 +139,7 @@ impl Geometry for PlaneMirror {
 
         let local_ray = Ray {
             origin: inverse_transform.transform_point2(world_ray.origin),
-            direction: inverse_transform
-                .transform_vector2(world_ray.direction)
-                .normalize(),
+            direction: inverse_transform.transform_vector2(world_ray.direction),
             wavelength: world_ray.wavelength,
             intensity: world_ray.intensity,
         };
@@ -149,7 +177,10 @@ impl Drawable for PlaneMirror {
             .transform
             .local_to_world()
             .transform_point2(self.surface.start);
-        let end = self.transform.local_to_world().transform_point2(self.surface.end);
+        let end = self
+            .transform
+            .local_to_world()
+            .transform_point2(self.surface.end);
 
         macroquad::shapes::draw_line(start.x, start.y, end.x, end.y, 2.0, macroquad::color::WHITE);
     }

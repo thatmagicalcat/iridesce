@@ -17,7 +17,7 @@ use world::World;
 
 use crate::{
     lights::PointLight,
-    optical_objects::{Material, PlaneMirror},
+    optical_objects::{ConvexLens, Material, PlaneMirror},
 };
 
 const DEPTH: u32 = 5;
@@ -27,7 +27,7 @@ fn window_conf() -> Conf {
         window_title: "Reflections".to_string(),
         window_width: 800,
         window_height: 800,
-        window_resizable: false,
+        window_resizable: true,
         high_dpi: true,
         ..Default::default()
     }
@@ -37,31 +37,39 @@ fn window_conf() -> Conf {
 async fn main() {
     let mut world = World::new();
 
-    world.add_object(PlaneMirror::new(
-        400.0,
-        transform::Transform::identity()
-            .with_rotation(140.0_f32.to_radians())
-            .with_position(vec2(400.0, 200.0)),
-        Material {
-            reflectivity: 0.9,
-            refractive_index: 1.0,
-        },
-        false,
-    ));
+    // world.add_object(PlaneMirror::new(
+    //     400.0,
+    //     transform::Transform::identity()
+    //         .with_rotation(140.0_f32.to_radians())
+    //         .with_position(vec2(400.0, 200.0)),
+    //     Material {
+    //         reflectivity: 0.9,
+    //         refractive_index: 1.0,
+    //     },
+    // ));
+    //
+    // world.add_object(PlaneMirror::new(
+    //     100.0,
+    //     transform::Transform::identity()
+    //         .with_rotation(90.0_f32.to_radians())
+    //         .with_position(vec2(500.0, 500.0)),
+    //     Material {
+    //         reflectivity: 0.9,
+    //         refractive_index: 1.0,
+    //     },
+    // ));
 
-    world.add_object(PlaneMirror::new(
+    world.add_object(ConvexLens::new(
+        vec2(400.0, 400.0),
         100.0,
-        transform::Transform::identity()
-            .with_rotation(90.0_f32.to_radians())
-            .with_position(vec2(500.0, 500.0)),
+        150.0,
         Material {
-            reflectivity: 0.9,
-            refractive_index: 1.0,
+            reflectivity: 0.1,
+            refractive_index: 1.5,
         },
-        false,
     ));
 
-    world.add_light(PointLight::new(vec2(400.0, 400.0), 700.0, 200));
+    // world.add_light(PointLight::new(vec2(400.0, 400.0), 700.0, 200));
 
     loop {
         egui_macroquad::cfg(|ctx| {
@@ -76,7 +84,7 @@ async fn main() {
             }
         });
 
-        world.update(DEPTH);
+        world.update();
         world.draw();
 
         next_frame().await;
